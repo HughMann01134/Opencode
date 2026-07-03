@@ -1,0 +1,25 @@
+[project]
+name = "asr_benchmark_harness"
+version = "0.1.0"
+description = "ASR Benchmark Harness"
+dependencies = [
+    "torch",
+    "jiwer>=3.0",
+    "soundfile",
+    "huggingface_hub",
+    "faster-whisper",
+    "whisperx",
+]
+requires-python = ">=3.9"
+authors = [
+    { name = "Your Name", email = "your.email@example.com" },
+]
+license = { text = "MIT" }
+
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["Code", "Skills"]
+

@@ -1,0 +1,29 @@
+# .pii-allow file for asr-benchmark-harness
+
+# Allow email used as placeholder (more flexible regex)
+re:.*@example\.com
+
+# Allow specific git@github.com string in setup_github.py output
+re:git@github\.com
+
+# Allow placeholder home directory paths from blueprint (more general)
+re:/home/[a-zA-Z0-9_-]+/FirstProgram/
+
+# Allow LibriSpeech utterance IDs which might resemble credit card numbers
+re:\b\d{4}-\d{5}-\d{4}\b
+
+# Allow IPv4-like version numbers in uv.lock (exact match for redacted part)
+re:^version = "\*+"
+
+# Allow specific IPv4-like pattern within URLs in uv.lock (more targeted)
+re:https://files\.pythonhosted\.org/packages/.*/nvidia_cublas_cu12-\*+-py3-none-manylinux_2_27_x86_64\.whl
+re:https://files\.pythonhosted\.org/packages/.*/nvidia_cudnn_cu12-\*+-py3-none-manylinux_2_27_x86_64\.whl
+re:https://files\.pythonhosted\.org/packages/.*/nvidia_cufft_cu12-\*+-py3-none-manylinux2014_x86_64\.manylinux_2_17_x86_64\.whl
+re:https://files\.pythonhosted\.org/packages/.*/nvidia_cufile_cu12-\*+-py3-none-manylinux2014_x86_64\.manylinux_2_17_x86_64\.whl
+re:https://files\.pythonhosted\.org/packages/.*/nvidia_curand_cu12-\*+-py3-none-manylinux_2_27_x86_64\.whl
+re:https://files\.pythonhosted\.org/packages/.*/nvidia_cusolver_cu12-\*+-py3-none-manylinux_2_27_x86_64\.whl
+re:https://files\.pythonhosted\.org/packages/.*/nvidia_cusparse_cu12-\*+-py3-none-manylinux2014_x86_64\.manylinux_2_17_x86_64\.whl
+re:https://files\.pythonhosted\.org/packages/.*/nvidia_cusparselt_cu12-\*+-py3-none-manylinux24_x86_64\.whl
+re:https://files\.pythonhosted\.org/packages/.*/nvidia_nccl_cu12-\*+-py3-none-manylinux2014_x86_64\.manylinux_2_17_x86_64\.whl
+re:https://files\.pythonhosted\.org/packages/.*/nvidia_nvjitlink_cu12-\*+-py3-none-manylinux2010_x86_64\.manylinux_2_12_x86_64\.whl
+re:https://files\.pythonhosted\.org/packages/.*/nvidia_nvtx_cu12-\*+-py3-none-manylinux2014_x86_64\.manylinux_2_17_x86_64\.whl
