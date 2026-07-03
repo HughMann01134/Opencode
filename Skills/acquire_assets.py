@@ -1,9 +1,9 @@
 
-import os
+
 import argparse
 import hashlib
 import tarfile
-import shutil
+
 import urllib.request
 import time
 import subprocess
@@ -251,7 +251,7 @@ def cmd_smoke(args):
         import faster_whisper
         import jiwer
         import torch
-        from Skills.manage_device import detect_device, determine_compute_type, gpu_available
+        from Skills.manage_device import determine_compute_type, gpu_available
     except ImportError:
         print("Required libraries (faster_whisper, jiwer, torch, Skills.manage_device) not found.")
         print("Please ensure your environment is set up and all dependencies are installed.")

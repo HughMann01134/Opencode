@@ -1,4 +1,4 @@
-
+# Corrected Skills/check_no_pii.py content
 import argparse
 import re
 import os
@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 import subprocess
 
-DEFAULT_PROJECT_ROOT = Path("/mnt/d/Opencode/")
+DEFAULT_PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 
 # --- PII and Secret Patterns ---
 # Compiled regex patterns for detection
@@ -90,7 +90,6 @@ def scan_file(file_path: Path, allowlist_patterns: list[re.Pattern], strict: boo
 
     lines = content.splitlines()
     for i, line in enumerate(lines):
-        line_has_issue = False
         redacted_line = line
         pii_allow_tokens = re.findall(r"#\s*pii-allow:([a-zA-Z0-9,_-]+)", line, re.IGNORECASE)
         
@@ -111,7 +110,6 @@ def scan_file(file_path: Path, allowlist_patterns: list[re.Pattern], strict: boo
 
                 if not _is_allowed(found_text, i + 1, allowlist_patterns, pii_allow_tokens):
                     has_issues = True
-                    line_has_issue = True
                     issue_description = f"[{severity.upper()}] PII/Secret detected ({pattern_name})"
                     if redact:
                         redacted_match = "*" * len(found_text) # Simple redaction

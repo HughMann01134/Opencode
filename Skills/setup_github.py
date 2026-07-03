@@ -69,12 +69,11 @@ def _configure_auth(project_root: Path, method: str, token: str | None = None):
         print("  Assuming SSH key is already configured and git@github.com access is working.")
         # No specific git command needed, just a check for user awareness
     elif method == "token":
-        if token is None:
-            # In a real interactive session, we'd prompt for a token here.
-            raise ValueError("GitHub PAT token required for 'token' authentication method.")
+        resolved_token = token or os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
+        if resolved_token is None:
+            raise ValueError("GitHub PAT token required for 'token' authentication method. Set via --token argument or GITHUB_TOKEN/GH_TOKEN environment variable.")
         print("  Storing GitHub PAT using OS keychain helper (or in-memory cache). THIS IS A SIMULATION.")
-        # Simulate credential helper interaction without exposing the token directly.
-        # In a real scenario, this would involve piping to `git credential approve`
+        # In a real scenario, this would involve piping resolved_token to `git credential approve`
         print("  (Simulated) PAT stored securely.")
     else:
         raise ValueError(f"Unknown authentication method: {method}")

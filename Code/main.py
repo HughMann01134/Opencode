@@ -1,31 +1,21 @@
-
+# Corrected Code/main.py content
 import argparse
-import time
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Type
+from typing import Callable, Literal # Removed Sequence
 
-import torch
+import torch # Keep a single import for torch
+import gc # Keep a single import for gc
 
-from Code.config import BenchmarkConfig, DEFAULT_BENCHMARK_CONFIG, ModelConfig, MODEL_CONFIG, ModelAlias
-from Code.datasets import load_librispeech, Utterance
-from Code.mock_engine import TranscriptionEngine, MockWhisperXEngine # Import MockWhisperXEngine
-from Code.engines import WhisperXEngine # Import WhisperXEngine
+from Code.config import BenchmarkConfig, DEFAULT_BENCHMARK_CONFIG, MODEL_CONFIG, ModelAlias
+from Code.datasets import load_librispeech
+from Code.mock_engine import TranscriptionEngine, MockWhisperXEngine
+from Code.engines import WhisperXEngine
 from Code.writer import ResilientCSVWriter
 from Skills.manage_device import plan_device_passes
 from Skills.compute_wer_cer import CorpusMetricAccumulator
 from Skills.normalize_text import normalize_text
-
-import torch
-import gc
-import os
-from datetime import datetime
-from pathlib import Path
-from typing import Callable, Type, Literal, Sequence
-
-
-# Placeholder for the real engine, will be implemented in Phase 5
 
 
 def build_engine_factory(
@@ -40,7 +30,6 @@ def build_engine_factory(
         if engine_type == "mock":
             return MockWhisperXEngine(model_config.alias, device, compute_type, beam_size)
         elif engine_type == "whisperx":
-            # This will be implemented in Phase 5
             return WhisperXEngine(model_config.alias, device, compute_type, beam_size)
         else:
             raise ValueError(f"Unknown engine type: {engine_type}")
@@ -74,9 +63,9 @@ def run_benchmark(
         done_keys = set()
 
     for model_alias in config.models_to_benchmark:
-        print(f"\n{'='*80}")
+        print("\n" + '='*80)
         print(f"Benchmarking Model: {model_alias}")
-        print(f"{'='*80}")
+        print('='*80)
 
         # Determine device passes (e.g., [("cuda","float16"), ("cpu","int8")])
         try:
@@ -201,7 +190,6 @@ def run_benchmark(
                     print(f"Unloading engine for {model_alias} ({device}/{compute_type})...")
                     engine.unload()
                     # Force garbage collection and empty CUDA cache if applicable
-                    import gc
                     gc.collect()
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()

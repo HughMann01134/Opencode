@@ -1,6 +1,7 @@
 import time
 from pathlib import Path
 import abc
+import soundfile as sf # Moved import to top
 
 
 class TranscriptionEngine(abc.ABC):
@@ -44,7 +45,7 @@ class MockWhisperXEngine(TranscriptionEngine):
     def transcribe(
         self, audio_path: Path, reference_text: str = "MOCK REF"
     ) -> tuple[str, float, float]:
-        import soundfile as sf  # type: ignore
+
 
         audio_len = sf.info(str(audio_path)).duration
         proc_time = audio_len * 0.10  # Simulate processing at 10x real-time

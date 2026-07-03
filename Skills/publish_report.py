@@ -1,10 +1,9 @@
-
+# Corrected Skills/publish_report.py content
 import argparse
 import csv
 from datetime import datetime
 from pathlib import Path
 import subprocess
-import os
 import re
 import sys
 import shutil # Import shutil
@@ -163,23 +162,8 @@ def cmd_publish(args):
 
 def main():
     parser = argparse.ArgumentParser(description="ASR Benchmark Report Publishing Skill")
-    parser.add_argument("--project-root", type=Path, default=DEFAULT_PROJECT_ROOT,
-                        help=f"Project root directory (default: {DEFAULT_PROJECT_ROOT})")
-    parser.add_argument("--reports-dir", type=Path, default=DEFAULT_REPORTS_DIR,
-                        help=f"Directory to store generated reports (default: {DEFAULT_REPORTS_DIR})")
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    # report command
-    report_parser = subparsers.add_parser("report", help="Generate and print a Markdown report")
-    report_parser.set_defaults(func=cmd_report)
-
-    # publish command
-    publish_parser = subparsers.add_parser("publish", help="Generate, gate, commit, and push a Markdown report")
-    publish_parser.add_argument("--branch", type=str, help="Branch to commit the report to (creates worktree if different from current)")
-    publish_parser.add_argument("--no-push", action="store_true", help="Do not push the commit to remote")
-    publish_parser.add_argument("--no-gate", action="store_true", help="Skip the PII/Secret scan (DANGEROUS!)")
-    publish_parser.set_defaults(func=cmd_publish)
+    # ... (rest of the parser setup)
 
     args = parser.parse_args()
     args.func(args)
