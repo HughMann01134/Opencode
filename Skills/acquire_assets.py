@@ -50,7 +50,7 @@ DATASET_CATALOG: dict[DatasetSplit, dict] = {
     },
 }
 
-DEFAULT_PROJECT_ROOT = Path("/mnt/d/Opencode/") # /mnt/d/Opencode
+DEFAULT_PROJECT_ROOT = Path(__file__).resolve().parent.parent # /mnt/d/Opencode
 DEFAULT_MODELS_DIR = DEFAULT_PROJECT_ROOT / "models"
 DEFAULT_DATA_ROOT = DEFAULT_PROJECT_ROOT / "data"
 

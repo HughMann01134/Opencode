@@ -8,7 +8,7 @@ import re
 import sys
 import shutil # Import shutil
 
-DEFAULT_PROJECT_ROOT = Path("/mnt/d/Opencode/")
+DEFAULT_PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_REPORTS_DIR = DEFAULT_PROJECT_ROOT / "reports"
 
 # --- Helper Functions ---

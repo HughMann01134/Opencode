@@ -4,8 +4,9 @@ import subprocess
 import os
 from pathlib import Path
 import re
+import sys
 
-DEFAULT_PROJECT_ROOT = Path("/mnt/d/Opencode/")
+DEFAULT_PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # --- Helper Functions ---
 
@@ -87,7 +88,7 @@ def _install_pii_pre_commit_hook(project_root: Path):
     hook_content = f"""#!/bin/bash
 # PII Pre-commit Hook managed by asr-benchmark-harness setup_github.py
 
-PYTHONPATH="{os.environ.get('PYTHONPATH', '')}" /tmp/opencode/.venv/bin/python "{check_pii_script_path}" staged
+PYTHONPATH="{os.environ.get('PYTHONPATH', '')}" "{sys.executable}" "{check_pii_script_path}" staged
 
 if [ $? -ne 0 ]; then
   echo "\n⛔ PII/Secret scan failed. Aborting commit.\n"

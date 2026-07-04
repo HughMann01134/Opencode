@@ -231,7 +231,7 @@ def cmd_install_hook(args):
     hook_content = f"""#!/bin/bash
 # PII Pre-commit Hook managed by asr-benchmark-harness check_no_pii.py
 
-PYTHONPATH="{os.environ.get('PYTHONPATH', '')}" /tmp/opencode/.venv/bin/python "{check_pii_script_path}" staged
+PYTHONPATH="{os.environ.get('PYTHONPATH', '')}" "{sys.executable}" "{check_pii_script_path}" staged
 
 if [ $? -ne 0 ]; then
   echo "\n⛔ PII/Secret scan failed. Aborting commit.\n"

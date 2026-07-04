@@ -2,7 +2,7 @@ import os
 import json
 from pathlib import Path
 
-DEFAULT_PROJECT_ROOT = Path("/mnt/d/Opencode/") # Define DEFAULT_PROJECT_ROOT
+DEFAULT_PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 PROGRESS_PATH = DEFAULT_PROJECT_ROOT / "agent_progress.json"
 REQUEST_PATH = DEFAULT_PROJECT_ROOT / "gemini_query_prompt.md"
