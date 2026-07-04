@@ -1,6 +1,7 @@
 import random
 from pathlib import Path
 from typing import NamedTuple, Iterator, Sequence, Literal
+from Skills.profile_audio import get_audio_duration
 
 # Define a named tuple for an utterance to hold its data
 class Utterance(NamedTuple):
@@ -31,11 +32,14 @@ def load_librispeech(
 
     for split in splits:
         split_utterances: list[Utterance] = []
-        # Correct path for where the actual split data (e.g., test-clean) is located
-        # given that the overall data_root already points to /mnt/d/Opencode/data
-        split_path = data_root / "LibriSpeech" / "LibriSpeech" / split
+        
+        # Detect the layout once per split: probe single-nested, then double-nested
+        split_path = data_root / "LibriSpeech" / split
         if not split_path.exists():
-            print(f"Warning: Dataset split path not found: {split_path}. Skipping.")
+            split_path = data_root / "LibriSpeech" / "LibriSpeech" / split
+
+        if not split_path.exists():
+            print(f"Warning: Dataset split path not found (tried both single and double nested layouts) in: {data_root / 'LibriSpeech' / split}. Skipping.")
             continue
 
         # Find all .trans.txt files
@@ -58,7 +62,8 @@ def load_librispeech(
                     if not audio_path.exists():
                         try:
                             speaker_id, chapter_id, _ = utt_id.split('-')
-                            audio_path = data_root / "LibriSpeech" / split / speaker_id / chapter_id / f"{utt_id}.flac"
+                            # Fallback using the same detected split root structure
+                            audio_path = split_path / speaker_id / chapter_id / f"{utt_id}.flac"
                         except ValueError:
                             pass
 
@@ -67,7 +72,6 @@ def load_librispeech(
                         continue
 
                     try:
-                        from Skills.profile_audio import get_audio_duration
                         duration = get_audio_duration(audio_path)
                     except Exception as e:
                         print(f"Error getting duration for {audio_path}: {e}. Skipping.")
