@@ -22,7 +22,7 @@ def check_if_stuck(consecutive_failure_threshold: int = 3) -> bool:
 
 
 def assemble_escalation_payload(
-    stuck_module: str, error_message: str, code_snippet: str
+    stuck_module: str, error_message: str, attempted_args: str
 ) -> str:
     prompt = f"""### SYSTEM ESCALATION: DEVELOPER ASSISTANCE REQUEST
 The automated coding agent has encountered a persistent error during implementation.
@@ -33,16 +33,16 @@ The automated coding agent has encountered a persistent error during implementat
 {error_message}
 ```
 
-**Current Implementation Code:**
-```python
-{code_snippet}
+**Attempted Arguments:**
+```text
+{attempted_args}
 ```
 
 **Task Spec Context:**
 Review the ASR Spec rules regarding `{stuck_module}`. 
 
 **Instruction:**
-Identify the exact bug causing this failure and provide a corrected, complete implementation of the code snippet above. Keep your response brief and direct.
+Identify the exact bug causing this failure and provide a corrected, complete set of arguments or recovery steps. Keep your response brief and direct.
 """
     return prompt
 
@@ -80,14 +80,15 @@ def escalate_to_gemini(prompt: str) -> str | None:
 
     try:
         print("🚀 Sending approved request to Gemini...")
-        import google.generativeai as genai  # type: ignore
+        from google import genai
 
-        genai.configure(api_key=api_key)
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
 
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
-
-        print("\\n✅ Response Received from Gemini:")
+        print("\n✅ Response Received from Gemini:")
         print(response.text)
         return response.text
     except Exception as e:

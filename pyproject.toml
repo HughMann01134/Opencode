@@ -9,6 +9,7 @@ dependencies = [
     "huggingface_hub",
     "faster-whisper",
     "whisperx",
+    "google-genai>=1.0.0",
 ]
 requires-python = ">=3.9"
 authors = [
