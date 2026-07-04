@@ -23,7 +23,7 @@ def _run_command(cmd: list[str], cwd: Path, error_message: str, check: bool = Tr
     except FileNotFoundError:
         raise RuntimeError(f"Command not found: {cmd[0]}. Please ensure Git is installed and on your PATH.")
 
-def _generate_markdown_report(summary_path: Path) -> str:
+def _generate_markdown_report(summary_path: Path, all_runs: bool = False) -> str:
     """Generates a Markdown report from the summary.csv content."""
     report_lines = ["# ASR Benchmark Report\n", f"Generated on: {datetime.utcnow().isoformat()} (UTC)\n"]
 
@@ -33,26 +33,52 @@ def _generate_markdown_report(summary_path: Path) -> str:
         return "\n".join(report_lines)
 
     report_lines.append("## Summary Metrics\n")
-    report_lines.append("| Model | Engine | Device/Compute | Dataset | Split | OK/Fail | Total Audio (s) | Load (s) | Proc (s) | RTF | WER | CER |\n")
-    report_lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|\n")
+    report_lines.append("| Timestamp | Model | Engine | Device/Compute | Dataset | Split | OK/Fail | Total Audio (s) | Load (s) | Proc (s) | RTF | WER | CER |\n")
+    report_lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 
     with open(summary_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        for row in reader:
-            engine = row.get("engine", "unknown")
-            if engine == "mock":
-                engine_display = "mock (harness verification)"
-            else:
-                engine_display = engine
-            
-            split = row.get("split", "all")
-            n_ok = row.get("n_ok", row.get("n_utts", "0"))
-            n_failed = row.get("n_failed", "0")
-            ok_fail_display = f"{n_ok}/{n_failed}"
+        rows = list(reader)
 
-            report_lines.append(
-                f"| {row['model']} | {engine_display} | {row['device']}/{row['compute_type']} | {row['dataset']} | {split} | {ok_fail_display} | {float(row['total_audio_s']):.2f} | {float(row['load_s']):.2f} | {float(row['total_proc_s']):.2f} | {float(row['rtf']):.2f} | {float(row['wer']):.4f} | {float(row['cer']):.4f} |\n"
-            )
+    if not all_runs:
+        latest_runs = {}
+        for row in rows:
+            model = row.get("model", "")
+            engine = row.get("engine", "unknown")
+            device = row.get("device", "")
+            comp = row.get("compute_type", "")
+            split = row.get("split", "all")
+            key = (model, engine, device, comp, split)
+            
+            timestamp_str = row.get("timestamp", "")
+            try:
+                dt = datetime.fromisoformat(timestamp_str)
+            except Exception:
+                dt = datetime.min
+            
+            if key not in latest_runs or dt > latest_runs[key][0]:
+                latest_runs[key] = (dt, row)
+        
+        display_rows = [val[1] for val in latest_runs.values()]
+    else:
+        display_rows = rows
+
+    for row in display_rows:
+        ts = row.get("timestamp", "")
+        engine = row.get("engine", "unknown")
+        if engine == "mock":
+            engine_display = "mock (harness verification)"
+        else:
+            engine_display = engine
+        
+        split = row.get("split", "all")
+        n_ok = row.get("n_ok", row.get("n_utts", "0"))
+        n_failed = row.get("n_failed", "0")
+        ok_fail_display = f"{n_ok}/{n_failed}"
+
+        report_lines.append(
+            f"| {ts} | {row['model']} | {engine_display} | {row['device']}/{row['compute_type']} | {row['dataset']} | {split} | {ok_fail_display} | {float(row['total_audio_s']):.2f} | {float(row['load_s']):.2f} | {float(row['total_proc_s']):.2f} | {float(row['rtf']):.2f} | {float(row['wer']):.4f} | {float(row['cer']):.4f} |\n"
+        )
     
     # Add details about the environment/models if desired (could be from config.py)
     report_lines.append("\n--- Notes ---\n")
@@ -110,14 +136,14 @@ def cmd_report(args):
     """Generates and prints a Markdown report (does not commit)."""
     print("Generating Markdown report...")
     summary_path = args.project_root / "output" / "summary.csv"
-    report_content = _generate_markdown_report(summary_path)
+    report_content = _generate_markdown_report(summary_path, all_runs=args.all_runs)
     print("\n" + report_content)
 
 def cmd_publish(args):
     """Generates a Markdown report, gates it, commits, and pushes it."""
     print("Publishing ASR benchmark report...")
     summary_path = args.project_root / "output" / "summary.csv"
-    report_content = _generate_markdown_report(summary_path)
+    report_content = _generate_markdown_report(summary_path, all_runs=args.all_runs)
 
     # PII Gate
     check_pii_script_path = (DEFAULT_PROJECT_ROOT / "Skills" / "check_no_pii.py").resolve()
@@ -186,6 +212,11 @@ def main():
 
     # report subcommand
     report_parser = subparsers.add_parser("report", help="Generate and print report.")
+    report_parser.add_argument(
+        "--all-runs",
+        action="store_true",
+        help="Include all historical runs in the report instead of just the latest."
+    )
     report_parser.set_defaults(func=cmd_report)
 
     # publish subcommand
@@ -205,6 +236,11 @@ def main():
         "--no-gate",
         action="store_true",
         help="Skip the PII/Secret safety scan."
+    )
+    publish_parser.add_argument(
+        "--all-runs",
+        action="store_true",
+        help="Include all historical runs in the report instead of just the latest."
     )
     publish_parser.set_defaults(func=cmd_publish)
 

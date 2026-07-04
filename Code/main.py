@@ -288,6 +288,16 @@ def main():
     # Ensure output directory exists
     config.output_dir.mkdir(parents=True, exist_ok=True)
 
+    if not config.resume_from_last_run:
+        # Rotate existing output files to prevent appending duplicates on no-resume
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        for name in ["details", "summary"]:
+            path = config.output_dir / f"{name}.csv"
+            if path.exists():
+                backup_path = config.output_dir / f"{name}.bak-{timestamp}.csv"
+                print(f"⚠️  --no-resume specified. Rotating existing {path.name} to {backup_path.name}")
+                path.rename(backup_path)
+
     engine_factory = build_engine_factory(args.engine_type)
     run_benchmark(config, engine_factory)
 
