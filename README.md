@@ -250,3 +250,27 @@ This project has been verified on real WhisperX inference (CPU-only, offline ass
 - **Performance Metrics:** Real-run Real-Time Factor (RTF) of `~0.61–0.87`.
 
 *Explicit Scope Statement:* The full 15-model, GPU-then-CPU, full-corpus sweep is fully implemented, but **not yet executed** on the target GPU hardware.
+
+---
+
+## Agent Mode
+
+The project features a thin, fully autonomous **Agent layer** that interprets natural-language goals (e.g. *"Benchmark tiny and medium.en on whatever hardware I have and publish a report"*), formulates execution plans, calls whitelisted tools, and handles recovery (OOM fallback, asset acquisition) in a tight perceive-plan-act loop.
+
+### Safety Model & Constraints
+- **Whitelisted Tool Registry:** Zero arbitrary shell or code execution capability is granted to the LLM.
+- **Human-in-the-Loop Gates:** Asset downloads > 1 GB and remote Git pushes are gated with an interactive prompt. Bypassed only via `--yes`.
+- **Budget Caps:** Caps of `--max-steps` (default 20 turns) and `--max-retries` (default 2 failed attempts per intent) protect against runaway loops.
+- **Full Auditability:** Every turn is logged as JSON lines in `output/agent_transcript.jsonl` with automatic PII and secret checking.
+
+### Quickstart Command
+```bash
+python3 -m Code.agent "run a quick mock benchmark of tiny on cpu and report" --dry-run --yes
+```
+
+### Sample Transcript Excerpt
+```json
+{"timestamp": "2026-07-04T17:47:48.000Z", "event_type": "tool_call", "details": {"tool": "detect_hardware", "args": {}, "result": {"ok": true, "summary": "Detected hardware (Dry-run stub)."}}}
+{"timestamp": "2026-07-04T17:47:48.100Z", "event_type": "tool_call", "details": {"tool": "run_benchmark", "args": {"models": ["tiny"], "device": "cpu", "limit": 5, "engine": "mock"}}}
+{"timestamp": "2026-07-04T17:47:48.500Z", "event_type": "finish", "details": {"summary": "Completed successfully under dry-run bounds."}}
+```

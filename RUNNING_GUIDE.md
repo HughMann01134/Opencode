@@ -157,3 +157,29 @@ The outputs are written to the `output/` directory as `details.csv` and `summary
     cd <project_root>
     PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/publish_report.py report
     ```
+
+---
+
+#### **Phase 6: Agent Mode**
+
+The project includes an autonomous orchestrator agent that plans and executes benchmarking goals in natural language.
+
+1.  **Safety Guardrails:**
+    *   **Whitelisted Tools:** The agent cannot execute arbitrary shell commands or code.
+    *   **Human-in-the-Loop:** Approvals are required for downloading assets > 1 GB and pushing reports to remote Git unless pre-approved.
+    *   **Budget Caps:** Hard limits on max turns (default 20 steps) and recovery attempts (default 2 retries per unique tool intent).
+
+2.  **Run with Dry-Run (Demonstration):**
+    Simulates successes and failure recovery without API costs or downloads:
+
+    ```bash
+    python3 -m Code.agent "benchmark tiny on cpu with limit 5 using the mock engine and generate a report without pushing" --dry-run --yes
+    ```
+
+3.  **Run with Live API Key:**
+    Requires `GEMINI_API_KEY` to be set in your environment:
+
+    ```bash
+    export GEMINI_API_KEY="your_api_key_here"
+    python3 -m Code.agent "benchmark tiny on cpu with limit 5 using the mock engine and generate a report without pushing" --yes
+    ```
