@@ -1,6 +1,0 @@
-pyproject.toml
-Code/asr_benchmark_harness.egg-info/PKG-INFO
-Code/asr_benchmark_harness.egg-info/SOURCES.txt
-Code/asr_benchmark_harness.egg-info/dependency_links.txt
-Code/asr_benchmark_harness.egg-info/requires.txt
-Code/asr_benchmark_harness.egg-info/top_level.txt

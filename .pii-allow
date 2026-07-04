@@ -27,3 +27,4 @@ re:https://files\.pythonhosted\.org/packages/.*/nvidia_cusparselt_cu12-\*+-py3-n
 re:https://files\.pythonhosted\.org/packages/.*/nvidia_nccl_cu12-\*+-py3-none-manylinux2014_x86_64\.manylinux_2_17_x86_64\.whl
 re:https://files\.pythonhosted\.org/packages/.*/nvidia_nvjitlink_cu12-\*+-py3-none-manylinux2010_x86_64\.manylinux_2_12_x86_64\.whl
 re:https://files\.pythonhosted\.org/packages/.*/nvidia_nvtx_cu12-\*+-py3-none-manylinux2014_x86_64\.manylinux_2_17_x86_64\.whl
+re:^/mnt/d/Git/revamp/Opencode/
