@@ -220,3 +220,15 @@ re:^version = "\\*+"
 re:https://files\\.pythonhosted\\.org/packages/.*/nvidia_cublas_cu12-\\*+-py3-none-manylinux_2_27_x86_64\\.whl
 # ... (other similar uv.lock patterns)
 ```
+
+### Inline `# pii-allow:` Comments
+
+You can also whitelist specific findings inline on the same line as the finding by appending a comment.
+- **Format:** `# pii-allow:<exact_finding_text>`
+- **Semantics:** The token after the colon must **exactly equal** the matched finding text (case-insensitive full-string comparison). Substrings are not supported.
+- **Length Constraint:** Tokens shorter than 6 characters are ignored with a warning.
+
+Example:
+```python
+my_api_key = "AIzaSyD-abcde12345"  # pii-allow:AIzaSyD-abcde12345
+```

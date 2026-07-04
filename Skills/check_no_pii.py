@@ -1,3 +1,13 @@
+"""
+ASR Benchmark PII/Secret Scanner Skill.
+
+This module scans specified paths and tracked files for PII and secrets.
+Inline token allows whitelisting specific findings on the same line.
+Syntax: # pii-allow:<exact_finding_text>
+The token must exactly equal the matched finding text (case-insensitive full-string comparison).
+Tokens shorter than 6 characters are ignored with a warning.
+"""
+
 # Corrected Skills/check_no_pii.py content
 import argparse
 import re
@@ -61,11 +71,14 @@ def _load_allowlist(project_root: Path) -> list[re.Pattern]:
                         print(f"Warning: Invalid regex in .pii-allow: {line} - {e}", file=sys.stderr)
     return allowlist_patterns
 
-def _is_allowed(content: str, line_number: int, allowlist: list[re.Pattern], pii_allow_tokens: list[str]) -> bool:
+def _is_allowed(content: str, line_number: int, allowlist: list[re.Pattern], pii_allow_tokens: list[str], secret_value: str | None = None) -> bool:
     """Checks if a detected string is present in the allowlist or has an inline token."""
     # Check inline # pii-allow tokens on the same line
     for token in pii_allow_tokens:
-        if token.lower() in content.lower(): # Simple substring match for tokens
+        if len(token) < 6:
+            print(f"Warning: Ignoring short # pii-allow token '{token}' on line {line_number} (minimum 6 characters required).", file=sys.stderr)
+            continue
+        if token.lower() == content.lower() or (secret_value and token.lower() == secret_value.lower()): # Exact match (case-insensitive full-string comparison)
             return True
     
     # Check against allowlist regexes
@@ -91,7 +104,7 @@ def scan_file(file_path: Path, allowlist_patterns: list[re.Pattern], strict: boo
     lines = content.splitlines()
     for i, line in enumerate(lines):
         redacted_line = line
-        pii_allow_tokens = re.findall(r"#\s*pii-allow:([a-zA-Z0-9,_-]+)", line, re.IGNORECASE)
+        pii_allow_tokens = re.findall(r"#\s*pii-allow:([a-zA-Z0-9_.,@/\\-]+)", line, re.IGNORECASE)
         
         for pattern_name, pattern_info in ALL_PATTERNS.items():
             pattern = pattern_info["pattern"]
@@ -108,7 +121,8 @@ def scan_file(file_path: Path, allowlist_patterns: list[re.Pattern], strict: boo
                 if any(fp_pattern.search(found_text) for fp_pattern in FALSE_POSITIVES):
                     continue
 
-                if not _is_allowed(found_text, i + 1, allowlist_patterns, pii_allow_tokens):
+                secret_value = match.group(2) if (pattern_name == "GENERIC_CRED" and match.lastindex == 2) else None
+                if not _is_allowed(found_text, i + 1, allowlist_patterns, pii_allow_tokens, secret_value=secret_value):
                     has_issues = True
                     issue_description = f"[{severity.upper()}] PII/Secret detected ({pattern_name})"
                     if redact:
