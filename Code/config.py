@@ -66,6 +66,7 @@ class BenchmarkConfig:
     ])
 
     # Benchmarking parameters
+    engine_type: Literal["mock", "whisperx"] = "mock" # "mock" or "whisperx"
     device: str = "auto" # "auto", "cuda", "cpu", "both"
     compute_type: str | None = None # float16, int8, int16, float32 - auto-selected by manage_device
     batch_size: int = 1

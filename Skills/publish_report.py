@@ -33,13 +33,26 @@ def _generate_markdown_report(summary_path: Path) -> str:
         return "\n".join(report_lines)
 
     report_lines.append("## Summary Metrics\n")
-    report_lines.append("| Model | Device/Compute | Dataset | Utterances | Total Audio (s) | Load (s) | Proc (s) | RTF | WER | CER |\n")
-    report_lines.append("|---|---|---|---|---|---|---|---|---|---|\n")
+    report_lines.append("| Model | Engine | Device/Compute | Dataset | Split | OK/Fail | Total Audio (s) | Load (s) | Proc (s) | RTF | WER | CER |\n")
+    report_lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 
     with open(summary_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            report_lines.append(f"| {row['model']} | {row['device']}/{row['compute_type']} | {row['dataset']} | {row['n_utts']} | {float(row['total_audio_s']):.2f} | {float(row['load_s']):.2f} | {float(row['total_proc_s']):.2f} | {float(row['rtf']):.2f} | {float(row['wer']):.4f} | {float(row['cer']):.4f} |\n")
+            engine = row.get("engine", "unknown")
+            if engine == "mock":
+                engine_display = "mock (harness verification)"
+            else:
+                engine_display = engine
+            
+            split = row.get("split", "all")
+            n_ok = row.get("n_ok", row.get("n_utts", "0"))
+            n_failed = row.get("n_failed", "0")
+            ok_fail_display = f"{n_ok}/{n_failed}"
+
+            report_lines.append(
+                f"| {row['model']} | {engine_display} | {row['device']}/{row['compute_type']} | {row['dataset']} | {split} | {ok_fail_display} | {float(row['total_audio_s']):.2f} | {float(row['load_s']):.2f} | {float(row['total_proc_s']):.2f} | {float(row['rtf']):.2f} | {float(row['wer']):.4f} | {float(row['cer']):.4f} |\n"
+            )
     
     # Add details about the environment/models if desired (could be from config.py)
     report_lines.append("\n--- Notes ---\n")
@@ -162,8 +175,38 @@ def cmd_publish(args):
 
 def main():
     parser = argparse.ArgumentParser(description="ASR Benchmark Report Publishing Skill")
+    parser.add_argument(
+        "--project-root",
+        type=Path,
+        default=DEFAULT_PROJECT_ROOT,
+        help="Path to the project root directory."
+    )
 
-    # ... (rest of the parser setup)
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Subcommands")
+
+    # report subcommand
+    report_parser = subparsers.add_parser("report", help="Generate and print report.")
+    report_parser.set_defaults(func=cmd_report)
+
+    # publish subcommand
+    publish_parser = subparsers.add_parser("publish", help="Generate and publish report to Git.")
+    publish_parser.add_argument(
+        "--branch",
+        type=str,
+        default=None,
+        help="Git branch to commit and push the report to."
+    )
+    publish_parser.add_argument(
+        "--no-push",
+        action="store_true",
+        help="Commit the report locally but do not push to remote."
+    )
+    publish_parser.add_argument(
+        "--no-gate",
+        action="store_true",
+        help="Skip the PII/Secret safety scan."
+    )
+    publish_parser.set_defaults(func=cmd_publish)
 
     args = parser.parse_args()
     args.func(args)

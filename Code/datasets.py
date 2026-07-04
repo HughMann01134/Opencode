@@ -1,4 +1,3 @@
-
 import random
 from pathlib import Path
 from typing import NamedTuple, Iterator, Sequence, Literal
@@ -9,6 +8,7 @@ class Utterance(NamedTuple):
     audio_path: Path
     text: str
     duration: float  # In seconds
+    split: str
 
 def load_librispeech(
     data_root: Path,
@@ -30,6 +30,7 @@ def load_librispeech(
     all_utterances: list[Utterance] = []
 
     for split in splits:
+        split_utterances: list[Utterance] = []
         # Correct path for where the actual split data (e.g., test-clean) is located
         # given that the overall data_root already points to /mnt/d/Opencode/data
         split_path = data_root / "LibriSpeech" / "LibriSpeech" / split
@@ -53,30 +54,18 @@ def load_librispeech(
                     utt_id, text = parts[0], parts[1]
                     
                     # Construct audio path (assuming FLAC files in same dir as trans.txt)
-                    # Example: 19-198-0000.flac for 19-198-0000.trans.txt (trans_file contains only text for utterance ids)
                     audio_path = trans_file.parent / f"{utt_id}.flac"
                     if not audio_path.exists():
-                        # Fallback for paths like LibriSpeech/train-clean-100/19/198/19-198-0000.flac
-                        # The transcription file itself is often at a higher level, so we need to rebuild the path.
-                        # Reconstruct the audio file path based on LibriSpeech common structure:
-                        # data_root/LibriSpeech/<split>/<speaker_id>/<chapter_id>/<utterance_id>.flac
-                        # utt_id is typically <speaker_id>-<chapter_id>-<sequence_id>
                         try:
                             speaker_id, chapter_id, _ = utt_id.split('-')
                             audio_path = data_root / "LibriSpeech" / split / speaker_id / chapter_id / f"{utt_id}.flac"
                         except ValueError:
-                            pass # Keep original audio_path if utt_id format is unexpected
+                            pass
 
                     if not audio_path.exists():
-                        # If still not found, print a warning and skip
                         print(f"Warning: Audio file not found for {utt_id} at {audio_path}. Skipping.")
                         continue
 
-                    # We need the duration. Instead of re-implementing, we can use the skill.
-                    # For this module, we'll assume a mechanism to get duration will be available
-                    # (e.g., an external profiler utility or a pre-computed manifest).
-                    # For now, we'll use a placeholder or rely on a helper from Skills.
-                    # Since Skills.profile_audio is available, we will use it.
                     try:
                         from Skills.profile_audio import get_audio_duration
                         duration = get_audio_duration(audio_path)
@@ -84,10 +73,12 @@ def load_librispeech(
                         print(f"Error getting duration for {audio_path}: {e}. Skipping.")
                         continue
 
-                    all_utterances.append(Utterance(id=utt_id, audio_path=audio_path, text=text, duration=duration))
+                    split_utterances.append(Utterance(id=utt_id, audio_path=audio_path, text=text, duration=duration, split=split))
 
-    if limit and len(all_utterances) > limit:
-        random.Random(seed).shuffle(all_utterances) # Deterministic shuffle
-        all_utterances = all_utterances[:limit]
+        if limit and len(split_utterances) > limit:
+            random.Random(seed).shuffle(split_utterances) # Deterministic shuffle
+            split_utterances = split_utterances[:limit]
+
+        all_utterances.extend(split_utterances)
 
     yield from all_utterances

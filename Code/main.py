@@ -1,12 +1,12 @@
 # Corrected Code/main.py content
 import argparse
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Literal # Removed Sequence
+from typing import Callable, Literal
 
-import torch # Keep a single import for torch
-import gc # Keep a single import for gc
+import torch
+import gc
 
 from Code.config import BenchmarkConfig, DEFAULT_BENCHMARK_CONFIG, MODEL_CONFIG, ModelAlias
 from Code.datasets import load_librispeech
@@ -34,6 +34,7 @@ def build_engine_factory(
         else:
             raise ValueError(f"Unknown engine type: {engine_type}")
     return factory
+
 
 def run_benchmark(
     config: BenchmarkConfig,
@@ -83,11 +84,10 @@ def run_benchmark(
             print(f"\n--- Pass: {device}/{compute_type} ({scenario}) ---")
             
             engine = None
-            current_pass_utterances = 0
-            current_pass_audio_s = 0.0
-            current_pass_proc_s = 0.0
             current_pass_load_s = 0.0
-            corpus_accumulator = CorpusMetricAccumulator()
+            
+            # Group stats and accumulators by split name
+            split_stats = {}
 
             try:
                 # Build and load engine
@@ -97,10 +97,31 @@ def run_benchmark(
                 print(f"Engine loaded in {current_pass_load_s:.2f} seconds. Settings: {engine.settings()}")
 
                 for utt in all_utterances:
-                    key = (model_alias, config.dataset_name, utt.id, device, compute_type)
+                    # Key structure: (model_alias, dataset_name, utt_id, device, compute_type, split, engine_type)
+                    key = (
+                        model_alias,
+                        config.dataset_name,
+                        utt.id,
+                        device,
+                        compute_type,
+                        utt.split,
+                        config.engine_type
+                    )
                     if key in done_keys:
                         # print(f"  Skipping already processed utterance: {utt.id}")
                         continue
+                    
+                    # Initialize stats for this split if not present
+                    if utt.split not in split_stats:
+                        split_stats[utt.split] = {
+                            "n_ok": 0,
+                            "n_failed": 0,
+                            "total_audio_s": 0.0,
+                            "total_proc_s": 0.0,
+                            "accumulator": CorpusMetricAccumulator()
+                        }
+                    
+                    stats = split_stats[utt.split]
                     
                     # Transcribe and collect metrics
                     try:
@@ -111,15 +132,17 @@ def run_benchmark(
                         normalized_ref = normalize_text(utt.text)
                         normalized_hyp = normalize_text(hypothesis)
 
-                        wer_utt, cer_utt = corpus_accumulator.add_utterance(normalized_ref, normalized_hyp)
+                        wer_utt, cer_utt = stats["accumulator"].add_utterance(normalized_ref, normalized_hyp)
 
                         writer.write_detail_row({
                             "model": model_alias,
-                            "arch": MODEL_CONFIG[model_alias].family, # Assuming family is arch for simplicity
+                            "arch": MODEL_CONFIG[model_alias].family,
+                            "engine": config.engine_type,
                             "compute_type": compute_type,
                             "beam_size": config.beam_size,
                             "device": device,
                             "dataset": config.dataset_name,
+                            "split": utt.split,
                             "utt_id": utt.id,
                             "audio_s": audio_s,
                             "proc_s": proc_s,
@@ -130,58 +153,69 @@ def run_benchmark(
                             "reference": utt.text,
                             "error": "", # No error for successful transcription
                         })
-                        current_pass_utterances += 1
-                        current_pass_audio_s += audio_s
-                        current_pass_proc_s += proc_s
+                        stats["n_ok"] += 1
+                        stats["total_audio_s"] += audio_s
+                        stats["total_proc_s"] += proc_s
 
                     except Exception as e:
                         print(f"Error processing utterance {utt.id}: {e}")
+                        # Score failure into the accumulator as an empty hypothesis
+                        normalized_ref = normalize_text(utt.text)
+                        wer_utt, cer_utt = stats["accumulator"].add_utterance(normalized_ref, "")
+
                         writer.write_detail_row({
                             "model": model_alias,
                             "arch": MODEL_CONFIG[model_alias].family,
+                            "engine": config.engine_type,
                             "compute_type": compute_type,
                             "beam_size": config.beam_size,
                             "device": device,
                             "dataset": config.dataset_name,
+                            "split": utt.split,
                             "utt_id": utt.id,
                             "audio_s": utt.duration,
                             "proc_s": 0.0,
                             "rtf": 0.0,
-                            "wer": 1.0, # Assign max error for failed transcription
-                            "cer": 1.0, # Assign max error for failed transcription
+                            "wer": wer_utt,
+                            "cer": cer_utt,
                             "hypothesis": "",
                             "reference": utt.text,
                             "error": str(e),
                         })
+                        stats["n_failed"] += 1
 
-                # Write summary row for the current pass
-                if current_pass_utterances > 0:
-                    writer.write_summary_row({
-                        "timestamp": datetime.utcnow().isoformat(),
-                        "model": model_alias,
-                        "arch": MODEL_CONFIG[model_alias].family,
-                        "compute_type": compute_type,
-                        "beam_size": config.beam_size,
-                        "device": device,
-                        "batch_size": config.batch_size,
-                        "dataset": config.dataset_name,
-                        "n_utts": current_pass_utterances,
-                        "total_audio_s": current_pass_audio_s,
-                        "load_s": current_pass_load_s,
-                        "total_proc_s": current_pass_proc_s,
-                        "rtf": (current_pass_proc_s / current_pass_audio_s) if current_pass_audio_s else 0.0,
-                        "wer": corpus_accumulator.corpus_wer,
-                        "cer": corpus_accumulator.corpus_cer,
-                    })
-                    print(f"Summary for {model_alias} ({device}/{compute_type}):")
-                    print(f"  Total Utterances: {current_pass_utterances}")
-                    print(f"  Total Audio: {current_pass_audio_s:.2f} s")
-                    print(f"  Total Proc: {current_pass_proc_s:.2f} s")
-                    print(f"  RTF: {(current_pass_proc_s / current_pass_audio_s):.2f}")
-                    print(f"  Corpus WER: {corpus_accumulator.corpus_wer:.4f}")
-                    print(f"  Corpus CER: {corpus_accumulator.corpus_cer:.4f}")
-                else:
-                    print(f"No utterances processed for {model_alias} ({device}/{compute_type}) in this pass.")
+                # Write summary row for each split in the current pass
+                for split_name, stats in split_stats.items():
+                    n_utts = stats["n_ok"] + stats["n_failed"]
+                    if n_utts > 0:
+                        writer.write_summary_row({
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "model": model_alias,
+                            "arch": MODEL_CONFIG[model_alias].family,
+                            "engine": config.engine_type,
+                            "compute_type": compute_type,
+                            "beam_size": config.beam_size,
+                            "device": device,
+                            "batch_size": config.batch_size,
+                            "dataset": config.dataset_name,
+                            "split": split_name,
+                            "n_ok": stats["n_ok"],
+                            "n_failed": stats["n_failed"],
+                            "n_utts": n_utts,
+                            "total_audio_s": stats["total_audio_s"],
+                            "load_s": current_pass_load_s,
+                            "total_proc_s": stats["total_proc_s"],
+                            "rtf": (stats["total_proc_s"] / stats["total_audio_s"]) if stats["total_audio_s"] else 0.0,
+                            "wer": stats["accumulator"].corpus_wer,
+                            "cer": stats["accumulator"].corpus_cer,
+                        })
+                        print(f"Summary for {model_alias} ({device}/{compute_type}) split {split_name}:")
+                        print(f"  Total Utterances: {n_utts} (OK: {stats['n_ok']}, Failed: {stats['n_failed']})")
+                        print(f"  Total Audio: {stats['total_audio_s']:.2f} s")
+                        print(f"  Total Proc: {stats['total_proc_s']:.2f} s")
+                        print(f"  RTF: {(stats['total_proc_s'] / stats['total_audio_s'] if stats['total_audio_s'] else 0.0):.2f}")
+                        print(f"  Corpus WER: {stats['accumulator'].corpus_wer:.4f}")
+                        print(f"  Corpus CER: {stats['accumulator'].corpus_cer:.4f}")
 
             except Exception as e:
                 print(f"Critical error during pass for {model_alias} ({device}/{compute_type}): {e}")
@@ -193,6 +227,7 @@ def run_benchmark(
                     gc.collect()
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -241,6 +276,7 @@ def main():
     config.resume_from_last_run = args.resume_from_last_run
     config.output_dir = args.output_dir
     config.seed = args.seed
+    config.engine_type = args.engine_type # Set config.engine_type
 
     print(f"Starting ASR Benchmark Harness (Engine: {args.engine_type})...")
     print(f"Configuration: {config}")
@@ -257,8 +293,9 @@ def main():
 
     print("ASR Benchmark Harness finished.")
 
+
 if __name__ == "__main__":
-    # Set PYTHONTAH to include project root for module discovery
+    # Set PYTHONPATH to include project root for module discovery
     project_root = Path(__file__).parent.parent.resolve()
     if str(project_root) not in os.environ.get('PYTHONPATH', '').split(os.pathsep):
         os.environ['PYTHONPATH'] = f"{project_root}{os.pathsep}{os.environ.get('PYTHONPATH', '')}"

@@ -1,6 +1,49 @@
 import os
 import csv
 from pathlib import Path
+from datetime import datetime, timezone
+
+DETAIL_FIELDS: list[str] = [
+    "model",
+    "arch",
+    "engine",
+    "compute_type",
+    "beam_size",
+    "device",
+    "dataset",
+    "split",
+    "utt_id",
+    "audio_s",
+    "proc_s",
+    "rtf",
+    "wer",
+    "cer",
+    "hypothesis",
+    "reference",
+    "error",
+]
+
+SUMMARY_FIELDS: list[str] = [
+    "timestamp",
+    "model",
+    "arch",
+    "engine",
+    "compute_type",
+    "beam_size",
+    "device",
+    "batch_size",
+    "dataset",
+    "split",
+    "n_ok",
+    "n_failed",
+    "n_utts",
+    "total_audio_s",
+    "load_s",
+    "total_proc_s",
+    "rtf",
+    "wer",
+    "cer",
+]
 
 
 class ResilientCSVWriter:
@@ -14,75 +57,45 @@ class ResilientCSVWriter:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.details_path = self.output_dir / "details.csv"
         self.summary_path = self.output_dir / "summary.csv"
+        self._check_legacy_headers()
         self._init_headers()
 
-    def _init_headers(self):
-        # Header definitions matching spec §10
-        det_head = [
-            "model",
-            "arch",
-            "compute_type",
-            "beam_size",
-            "device",
-            "dataset",
-            "utt_id",
-            "audio_s",
-            "proc_s",
-            "rtf",
-            "wer",
-            "cer",
-            "hypothesis",
-            "reference",
-            "error",
-        ]
-        sum_head = [
-            "timestamp",
-            "model",
-            "arch",
-            "compute_type",
-            "beam_size",
-            "device",
-            "batch_size",
-            "dataset",
-            "n_utts",
-            "total_audio_s",
-            "load_s",
-            "total_proc_s",
-            "rtf",
-            "wer",
-            "cer",
-        ]
+    def _check_legacy_headers(self):
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        for path, expected_fields in [
+            (self.details_path, DETAIL_FIELDS),
+            (self.summary_path, SUMMARY_FIELDS),
+        ]:
+            if path.exists():
+                try:
+                    with open(path, "r", newline="", encoding="utf-8") as f:
+                        reader = csv.reader(f)
+                        header = next(reader, None)
+                    if header and header != expected_fields:
+                        legacy_path = path.with_name(
+                            f"{path.stem}.legacy-{timestamp}.csv"
+                        )
+                        print(
+                            f"⚠️  Legacy header detected in {path.name}. Renaming to {legacy_path.name}"
+                        )
+                        path.rename(legacy_path)
+                except Exception as e:
+                    print(f"Error checking header for {path.name}: {e}")
 
+    def _init_headers(self):
         if not self.details_path.exists():
             with open(self.details_path, "w", newline="", encoding="utf-8") as f:
-                csv.writer(f).writerow(det_head)
+                csv.writer(f).writerow(DETAIL_FIELDS)
         if not self.summary_path.exists():
             with open(self.summary_path, "w", newline="", encoding="utf-8") as f:
-                csv.writer(f).writerow(sum_head)
+                csv.writer(f).writerow(SUMMARY_FIELDS)
 
     def write_detail_row(self, row: dict):
         """Writes one row and immediately flushes + syncs it to the physical disk."""
-        fields = [
-            "model",
-            "arch",
-            "compute_type",
-            "beam_size",
-            "device",
-            "dataset",
-            "utt_id",
-            "audio_s",
-            "proc_s",
-            "rtf",
-            "wer",
-            "cer",
-            "hypothesis",
-            "reference",
-            "error",
-        ]
         with open(
             self.details_path, "a", newline="", encoding="utf-8", buffering=1
         ) as f:
-            writer = csv.DictWriter(f, fieldnames=fields)
+            writer = csv.DictWriter(f, fieldnames=DETAIL_FIELDS)
             writer.writerow(row)
             # Guarantee physical write to disk
             f.flush()
@@ -90,42 +103,23 @@ class ResilientCSVWriter:
 
     def write_summary_row(self, row: dict):
         """Writes summary record and immediate physical disk commit."""
-        fields = [
-            "timestamp",
-            "model",
-            "arch",
-            "compute_type",
-            "beam_size",
-            "device",
-            "batch_size",
-            "dataset",
-            "n_utts",
-            "total_audio_s",
-            "load_s",
-            "total_proc_s",
-            "rtf",
-            "wer",
-            "cer",
-        ]
         with open(
             self.summary_path, "a", newline="", encoding="utf-8", buffering=1
         ) as f:
-            writer = csv.DictWriter(f, fieldnames=fields)
+            writer = csv.DictWriter(f, fieldnames=SUMMARY_FIELDS)
             writer.writerow(row)
             f.flush()
             os.fsync(f.fileno())
 
-    def parse_existing_runs(self) -> set[tuple[str, str, str, str, str]]:
+    def parse_existing_runs(self) -> set[tuple[str, str, str, str, str, str, str]]:
         """
         Reads details.csv to retrieve already finished keys
-        (model, dataset, utt_id, device, compute_type) to skip redundant
+        (model, dataset, utt_id, device, compute_type, split, engine) to skip redundant
         calculations. Including device + compute_type is essential for the
-        GPU-then-CPU sweep: the same utterance is benchmarked once per device,
-        so a 3-tuple key would make the CPU pass skip everything the GPU pass
-        already wrote.
+        GPU-then-CPU sweep.
         Safely ignores the last line if it is corrupt/half-written, truncating the file back to safety.
         """
-        completed_keys: set[tuple[str, str, str, str, str]] = set()
+        completed_keys: set[tuple[str, str, str, str, str, str, str]] = set()
         if not self.details_path.exists():
             return completed_keys
 
@@ -138,8 +132,8 @@ class ResilientCSVWriter:
         for line in lines:
             try:
                 decoded = line.decode("utf-8")
-                # Ensure it is a valid CSV line with the exact expected comma count
-                if len(list(csv.reader([decoded]))[0]) == 15:
+                # Ensure it is a valid CSV line with the exact expected column count
+                if len(list(csv.reader([decoded]))[0]) == len(DETAIL_FIELDS):
                     valid_lines.append(line)
             except Exception:
                 continue
@@ -163,6 +157,8 @@ class ResilientCSVWriter:
                             row["utt_id"],
                             row["device"],
                             row["compute_type"],
+                            row.get("split", "unknown"),
+                            row.get("engine", "unknown"),
                         )
                     )
         return completed_keys
