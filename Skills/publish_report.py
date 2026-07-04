@@ -1,7 +1,7 @@
 # Corrected Skills/publish_report.py content
 import argparse
 import csv
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import subprocess
 import re
@@ -25,7 +25,7 @@ def _run_command(cmd: list[str], cwd: Path, error_message: str, check: bool = Tr
 
 def _generate_markdown_report(summary_path: Path, all_runs: bool = False) -> str:
     """Generates a Markdown report from the summary.csv content."""
-    report_lines = ["# ASR Benchmark Report\n", f"Generated on: {datetime.utcnow().isoformat()} (UTC)\n"]
+    report_lines = ["# ASR Benchmark Report\n", f"Generated on: {datetime.now(timezone.utc).isoformat()} (UTC)\n"]
 
     if not summary_path.exists():
         report_lines.append("## No Summary Data Available\n")
@@ -114,7 +114,7 @@ def _commit_and_push_report(project_root: Path, report_path: Path, index_path: P
         _run_command(["git", "add", str(report_path.name)], commit_cwd, "Failed to add report file", check=False)
         _run_command(["git", "add", str(index_path.name)], commit_cwd, "Failed to add index file", check=False)
         
-        commit_message = f"Docs: ASR Benchmark Report {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}"
+        commit_message = f"Docs: ASR Benchmark Report {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}"
         _run_command(["git", "commit", "-m", commit_message], commit_cwd, "Failed to commit report", check=False)
         
         if not no_push:
@@ -168,7 +168,7 @@ def cmd_publish(args):
         except FileNotFoundError:
             print(f"Warning: PII scanner script not found at {check_pii_script_path}. Skipping PII scan.", file=sys.stderr)
 
-    report_file_name = f"report_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.md"
+    report_file_name = f"report_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.md"
     report_path = DEFAULT_REPORTS_DIR / report_file_name
     index_path = DEFAULT_REPORTS_DIR / "INDEX.md"
 
