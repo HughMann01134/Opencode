@@ -12,14 +12,14 @@ import argparse
 import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Callable
+from typing import Callable, cast
 
 # Use unified google-genai SDK
 from google import genai
 from google.genai import types
 
 # Existing repo modules
-from Code.config import MODEL_CONFIG
+from Code.config import MODEL_CONFIG, ModelAlias
 from Skills.manage_device import plan_device_passes, gpu_available
 from Skills.gemini_escalation import check_if_stuck, assemble_escalation_payload, escalate_to_gemini
 
@@ -59,6 +59,9 @@ You must ALWAYS conclude by calling `finish(summary: str)`. The summary must be 
 Do NOT invent tool names or arguments."""
 
 
+def default_approval(msg: str) -> bool:
+    return input(msg).strip().lower() == 'y'
+
 class AgentContext:
     dry_run: bool = False
     yes_flag: bool = False
@@ -73,9 +76,10 @@ class AgentContext:
     consecutive_failures: int = 0
     benchmark_calls_count: int = 0
     tool_intent_retries: dict[str, int] = {}
-    approval_callable: Callable[[str], bool] = lambda self, msg: input(msg).strip().lower() == 'y'
+    approval_callable: Callable[[str], bool] = default_approval
 
 _ctx = AgentContext()
+_ctx.approval_callable = default_approval
 
 
 # --- Progress and Audit Helpers ---
@@ -226,7 +230,7 @@ def acquire_models(aliases: list[str]) -> dict:
     # Estimate download size for missing models
     total_size_gb = 0.0
     for alias in aliases:
-        local_path = MODEL_CONFIG[alias].local_path
+        local_path = MODEL_CONFIG[cast(ModelAlias, alias)].local_path
         if not (local_path.exists() and (local_path / "model.bin").exists()):
             total_size_gb += MODEL_SIZES_GB.get(alias, 0.5)
 
@@ -371,7 +375,7 @@ def run_benchmark(models: list[str], device: str, limit: int, engine: str) -> di
             for m in models:
                 for split in ["test-clean", "test-other"]:
                     writer.write_detail_row({
-                        "model": m, "arch": MODEL_CONFIG[m].family, "engine": engine,
+                        "model": m, "arch": MODEL_CONFIG[cast(ModelAlias, m)].family, "engine": engine,
                         "compute_type": "int8" if device == "cpu" else "float16",
                         "beam_size": 5, "device": "cpu" if device == "cpu" else "cuda",
                         "dataset": "LibriSpeech", "split": split, "utt_id": f"dummy-{m}-1",
@@ -380,7 +384,7 @@ def run_benchmark(models: list[str], device: str, limit: int, engine: str) -> di
                     })
                     writer.write_summary_row({
                         "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "model": m, "arch": MODEL_CONFIG[m].family, "engine": engine,
+                        "model": m, "arch": MODEL_CONFIG[cast(ModelAlias, m)].family, "engine": engine,
                         "compute_type": "int8" if device == "cpu" else "float16",
                         "beam_size": 5, "device": "cpu" if device == "cpu" else "cuda",
                         "batch_size": 1, "dataset": "LibriSpeech", "split": split,
@@ -649,7 +653,7 @@ def execute_agent_loop(goal: str):
             err_str = str(e).lower()
             if any(term in err_str for term in ["not found", "404", "not_found"]):
                 print(f"❌ API Error: Model '{_ctx.model_name}' was not found by the Gemini API.", file=sys.stderr)
-                print("Available model flags / options: 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash', 'gemini-1.5-pro'.", file=sys.stderr)
+                print("Available model flags / options: 'gemini-2.5-flash', 'gemini-2.5-pro'.", file=sys.stderr)
                 sys.exit(2)
             else:
                 print(f"❌ Gemini API Error: {e}", file=sys.stderr)
