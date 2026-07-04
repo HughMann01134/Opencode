@@ -326,13 +326,22 @@ def run_benchmark(models: list[str], device: str, limit: int, engine: str) -> di
     if _ctx.dry_run:
         _ctx.benchmark_calls_count += 1
         if _ctx.benchmark_calls_count == 1:
-            res = {
-                "ok": False,
-                "summary": "CUDA out-of-memory during load (scripted dry-run failure).",
-                "data": {
-                    "tail": "torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.50 GiB (GPU 0; 8.00 GiB total capacity; 6.20 GiB already allocated)"
+            if device == "cpu":
+                res = {
+                    "ok": False,
+                    "summary": f"Model directory not found for model: {models[0]} (scripted dry-run failure).",
+                    "data": {
+                        "tail": "Error: Model directory absent. Run list_assets and acquire_models to resolve."
+                    }
                 }
-            }
+            else:
+                res = {
+                    "ok": False,
+                    "summary": "CUDA out-of-memory during load (scripted dry-run failure).",
+                    "data": {
+                        "tail": "torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.50 GiB (GPU 0; 8.00 GiB total capacity; 6.20 GiB already allocated)"
+                    }
+                }
             append_transcript("tool_call", {"tool": "run_benchmark", "args": {"models": models, "device": device, "limit": limit, "engine": engine}, "result": res})
             return res
 
@@ -619,6 +628,7 @@ def execute_agent_loop(goal: str):
     last_failing_tool = ""
     last_failing_args = {}
     last_failing_tail = ""
+    consecutive_empty_responses = 0
 
     # Primary Loop
     while _ctx.steps_count < _ctx.max_steps:
@@ -659,19 +669,37 @@ def execute_agent_loop(goal: str):
                 print(f"❌ Gemini API Error: {e}", file=sys.stderr)
                 sys.exit(1)
 
+        # Check if the response is empty (no text and no function calls)
+        has_text = bool(response.text and response.text.strip())
+        has_fc = bool(response.function_calls)
+        
+        if not has_text and not has_fc:
+            consecutive_empty_responses += 1
+        else:
+            consecutive_empty_responses = 0
+            
+        if consecutive_empty_responses >= 3:
+            print("\n❌ Error: Received 3 consecutive empty responses from Gemini API. Terminating to avoid burning budget.", file=sys.stderr)
+            update_progress("failed", _ctx.consecutive_failures)
+            sys.exit(1)
+
         # Print reasoning or content
         if response.text:
             print(f"Agent Thought:\n{response.text.strip()}")
 
         # Append assistant turn
-        contents.append(response.candidates[0].content)
+        if response.candidates and response.candidates[0].content:
+            contents.append(response.candidates[0].content)
 
         # Handle tool execution
         if response.function_calls:
             tool_parts = []
             finished_session = False
+            final_narrative = ""
             for call in response.function_calls:
                 name = call.name
+                if name is None:
+                    continue
                 args = call.args if call.args else {}
                 
                 print(f"🔧 Tool selected: {name}({args})")
@@ -718,6 +746,7 @@ def execute_agent_loop(goal: str):
 
                 if name == "finish":
                     finished_session = True
+                    final_narrative = args.get("summary", "")
 
             # Append tool observations
             contents.append(types.Content(role="tool", parts=tool_parts))
@@ -726,7 +755,7 @@ def execute_agent_loop(goal: str):
                 update_progress("completed", 0)
                 print("\n" + "=" * 80)
                 print("🏁 AGENT RUN COMPLETED SUCCESSFULLY.")
-                print(f"Final summary results narrative:\n{response.text or ''}")
+                print(f"Final summary results narrative:\n{final_narrative}")
                 print(f"Audit log stored to: {_ctx.project_root}/output/agent_transcript.jsonl")
                 print("=" * 80)
                 sys.exit(0)
@@ -734,6 +763,18 @@ def execute_agent_loop(goal: str):
             # If model spoke without function call, make sure it knows it needs to select a tool or finish
             if not response.text:
                 print("⚠️ Warning: Model returned an empty response.")
+            
+            print("💬 Nudging agent to call tools...")
+            contents.append(
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(
+                            text="Continue: call one of your tools now, or call finish(summary=...). Do not reply with plain text again."
+                        )
+                    ]
+                )
+            )
 
     # Max steps exhaustion
     update_progress("failed", _ctx.consecutive_failures)
