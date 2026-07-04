@@ -243,7 +243,7 @@ This project was built using an advanced agentic software engineering workflow:
 
 ## Current results
 
-This project has been verified with a CPU-only offline mock engine setup:
+This project has been verified on real WhisperX inference (CPU-only, offline assets):
 - **Verified Configuration:** `tiny` model, CPU / `int8` quantization.
 - **Reference Data:** 2 LibriSpeech utterances.
 - **Accuracy Metrics:** Word Error Rate (WER) of `0.0000` / Character Error Rate (CER) of `0.0000` (word-perfect transcriptions confirmed against reference texts).

@@ -10,3 +10,5 @@ gemini_query_prompt.md
 details.csv
 summary.csv
 # --- ASR BENCHMARK IGNORE END ---
+__pycache__/
+*.egg-info/

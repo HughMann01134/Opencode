@@ -1,6 +1,0 @@
-torch
-jiwer>=3.0
-soundfile
-huggingface_hub
-faster-whisper
-whisperx

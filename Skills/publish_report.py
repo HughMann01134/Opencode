@@ -33,8 +33,13 @@ def _generate_markdown_report(summary_path: Path, all_runs: bool = False) -> str
         return "\n".join(report_lines)
 
     report_lines.append("## Summary Metrics\n")
-    report_lines.append("| Timestamp | Model | Engine | Device/Compute | Dataset | Split | OK/Fail | Total Audio (s) | Load (s) | Proc (s) | RTF | WER | CER |\n")
-    report_lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
+    headers = [
+        "Timestamp", "Model", "Engine", "Device/Compute", "Dataset", 
+        "Split", "OK/Fail", "Total Audio (s)", "Load (s)", "Proc (s)", 
+        "RTF", "WER", "CER"
+    ]
+    report_lines.append("| " + " | ".join(headers) + " |\n")
+    report_lines.append("|" + "---|"*len(headers) + "\n")
 
     with open(summary_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
