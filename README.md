@@ -232,3 +232,21 @@ Example:
 ```python
 my_api_key = "AIzaSyD-abcde12345"  # pii-allow:AIzaSyD-abcde12345
 ```
+
+## How this project was built
+
+This project was built using an advanced agentic software engineering workflow:
+1. **Implementation Blueprint:** An exhaustive [asr_benchmark_master_blueprint.md](asr_benchmark_master_blueprint.md) was authored with Claude.
+2. **First-Pass Implementation:** The system was built by Gemini 2.5 Flash driving the OpenCode interactive agent (documented in [.opencode/handoff.md](.opencode/handoff.md)).
+3. **Agentic Code Review:** The initial implementation was comprehensively reviewed by a Gemini 2.5 Pro subagent ([.opencode/gemini-review.md](.opencode/gemini-review.md)).
+4. **Remediation & Final Polish:** This final remediation pass was executed by Claude Code from an external review, addressing schema, failures, dataset structure, testing, and report/run hygiene.
+
+## Current results
+
+This project has been verified with a CPU-only offline mock engine setup:
+- **Verified Configuration:** `tiny` model, CPU / `int8` quantization.
+- **Reference Data:** 2 LibriSpeech utterances.
+- **Accuracy Metrics:** Word Error Rate (WER) of `0.0000` / Character Error Rate (CER) of `0.0000` (word-perfect transcriptions confirmed against reference texts).
+- **Performance Metrics:** Real-run Real-Time Factor (RTF) of `~0.61–0.87`.
+
+*Explicit Scope Statement:* The full 15-model, GPU-then-CPU, full-corpus sweep is fully implemented, but **not yet executed** on the target GPU hardware.

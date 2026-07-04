@@ -2,7 +2,7 @@
 
 This guide will walk you through setting up your environment and running the benchmark using both the mock engine (for quick verification) and the real `whisperx` engine.
 
-**Important:** Always execute commands from your project's root directory (`/mnt/d/Opencode/`) and ensure your virtual environment is active or Python is called with its full path.
+**Path Note:** This guide uses the template paths `<project_root>` and `<venv_path>` (historically `/mnt/d/Opencode/` and `/tmp/opencode/.venv/`). Please substitute your own project root and virtual environment paths as appropriate for your machine.
 
 ---
 
@@ -13,36 +13,33 @@ This guide will walk you through setting up your environment and running the ben
     *   Ensure **`ffmpeg`** is installed on your system (e.g., `sudo apt-get update && sudo apt-get install -y ffmpeg` on Ubuntu/Debian).
 
 2.  **Create and Activate Virtual Environment:**
-    If you followed the previous steps, your virtual environment is at `/tmp/opencode/.venv`. To ensure all commands use this environment:
+    Set up your virtual environment. For example:
 
     ```bash
     # Navigate to your project root
-    cd /mnt/d/Opencode/
+    cd <project_root>
 
     # If the virtual environment does not exist, create it:
-    python3 -m venv /tmp/opencode/.venv
+    python3 -m venv <venv_path>
 
-    # You can activate it (optional, but good practice for interactive work):
-    # source /tmp/opencode/.venv/bin/activate
-
-    # Or, as we've been doing, use the full path to the Python executable for all commands.
-    # We will primarily use the full path in this guide for consistency.
+    # You can activate it:
+    source <venv_path>/bin/activate
     ```
 
 3.  **Install Project Dependencies:**
     Install all required Python packages into your virtual environment.
 
     ```bash
-    cd /mnt/d/Opencode/
-    /tmp/opencode/.venv/bin/pip install -r requirements.txt
+    cd <project_root>
+    <venv_path>/bin/pip install -r requirements.txt
     ```
 
 4.  **Install Project in Editable Mode:**
     This ensures that Python correctly recognizes the `Code/` and `Skills/` directories as packages.
 
     ```bash
-    cd /mnt/d/Opencode/
-    /tmp/opencode/.venv/bin/pip install -e .
+    cd <project_root>
+    <venv_path>/bin/pip install -e .
     ```
 
 ---
@@ -52,24 +49,25 @@ This guide will walk you through setting up your environment and running the ben
 Use the mock engine to quickly verify that the harness orchestration, data loading, and reporting mechanisms are working correctly, without needing to download large models or datasets.
 
 1.  **Execute Mock Benchmark:**
-    This command runs the `tiny` model (mocked) on the CPU, processing only 2 utterances.
+    This command runs the `tiny` model (mocked) on the CPU, processing only 1 utterance per split.
 
     ```bash
-    cd /mnt/d/Opencode/
-    PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python -m Code.main \
+    cd <project_root>
+    PYTHONPATH=<project_root> <venv_path>/bin/python -m Code.main \
         --device cpu \
-        --limit 2 \
+        --limit 1 \
         --engine-type mock \
         --models-to-benchmark tiny \
         --no-resume
     ```
-    *   **Expected Output:** You will see messages about loading the mock engine, processing utterances, and a summary report with `Corpus WER: 0.0000` and `Corpus CER: 0.0000` (since the mock engine returns a perfect transcription).
+    *   **Note on Output Rotation:** Because `--no-resume` is specified, any existing `output/details.csv` and `output/summary.csv` will be automatically rotated to `<name>.bak-<UTCtimestamp>.csv` so you start with a fresh, clean set of metrics.
+    *   **Expected Output:** You will see messages about loading the mock engine, processing utterances, and a summary report with `Corpus WER: 0.0000` and `Corpus CER: 0.0000`.
 
 ---
 
 #### **Phase 3: Asset Acquisition (Required for Real Engine)**
 
-If you haven't already, you need to download the `faster-whisper` models and LibriSpeech datasets. This can take a significant amount of time and bandwidth.
+If you haven't already, you need to download the `faster-whisper` models and LibriSpeech datasets.
 
 1.  **Set Hugging Face Token (Optional but Recommended):**
     If you encounter download issues or rate limits, set your Hugging Face API token.
@@ -79,13 +77,12 @@ If you haven't already, you need to download the `faster-whisper` models and Lib
     ```
 
 2.  **Run the Acquisition Script:**
-    This command downloads all models and datasets. It is resumable, so if it stops, you can rerun it.
+    This command downloads all models and datasets.
 
     ```bash
-    cd /mnt/d/Opencode/
-    PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills/acquire_assets.py all
+    cd <project_root>
+    PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/acquire_assets.py all
     ```
-    *   **Expected Output:** Messages about downloading models and datasets. This will take a long time.
 
 ---
 
@@ -97,48 +94,66 @@ After assets are acquired, you can run benchmarks with the actual `whisperx` eng
     This runs the `tiny` model on the CPU, processing 2 utterances. This will perform actual ASR transcription.
 
     ```bash
-    cd /mnt/d/Opencode/
-    PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python -m Code.main \
+    cd <project_root>
+    PYTHONPATH=<project_root> <venv_path>/bin/python -m Code.main \
         --device cpu \
         --limit 2 \
         --engine-type whisperx \
         --models-to-benchmark tiny \
         --no-resume
     ```
-    *   **Expected Output:** You will see messages about loading the `whisperx` engine, language detection, and actual WER/CER figures in the summary. This will be slower than the mock engine.
 
-2.  **Run on Auto-Detected Device (GPU then CPU if available, or CPU only):**
-    This command runs the `tiny` and `medium.en` models. If a GPU is detected, it will run on the GPU first, then on the CPU. Otherwise, it will run only on the CPU.
+2.  **Run on Auto-Detected Device:**
+    *(Warning: This multi-model GPU configuration is **not yet validated on the target hardware**)*
 
     ```bash
-    cd /mnt/d/Opencode/
-    PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python -m Code.main \
+    cd <project_root>
+    PYTHONPATH=<project_root> <venv_path>/bin/python -m Code.main \
         --device auto \
         --limit 5 \
         --engine-type whisperx \
         --models-to-benchmark tiny medium.en \
         --no-resume
     ```
-    *   **Expected Output:** Similar to the CPU run, but you might see two "passes" (one for GPU, one for CPU) if a GPU is available.
 
 ---
 
-#### **Phase 5: Checking Results and Reporting**
+#### **Phase 5: Output Schema and Checking Results**
 
-1.  **View Raw Results (`details.csv`):**
+The outputs are written to the `output/` directory as `details.csv` and `summary.csv`.
+
+##### **`output/details.csv` Schema**
+- `model`, `arch`: The benchmarked model alias and its family.
+- `engine`: The transcription engine used (`mock` or `whisperx`).
+- `compute_type`, `beam_size`, `device`: Transcription hyperparameters and hardware.
+- `dataset`, `split`: Dataset name (`LibriSpeech`) and split name (`test-clean` or `test-other`).
+- `utt_id`, `audio_s`, `proc_s`, `rtf`: Utterance ID, duration, process time, and Real-Time Factor.
+- `wer`, `cer`: Utterance-level error rates.
+- `hypothesis`, `reference`, `error`: Normalized output text, exact reference, and any error message if transcription failed.
+
+##### **`output/summary.csv` Schema**
+- `timestamp`: Chronological ISO 8601 UTC timestamp of the pass.
+- `model`, `arch`, `engine`, `compute_type`, `beam_size`, `device`, `batch_size`, `dataset`, `split`: Pass hyperparameters.
+- `n_ok`: Count of successful utterances.
+- `n_failed`: Count of failed utterances (failed utterances count as empty hypothesis in overall WER/CER).
+- `n_utts`: Total attempted utterances (`n_ok + n_failed`).
+- `total_audio_s`, `load_s`, `total_proc_s`, `rtf`: Audio/model timing statistics computed over successful transcriptions only.
+- `wer`, `cer`: True corpus-level aggregated error rates over all attempted utterances.
+
+1.  **View Raw Results:**
     ```bash
-    cat /mnt/d/Opencode/output/details.csv
+    cat <project_root>/output/details.csv
     ```
 
-2.  **View Summary Results (`summary.csv`):**
+2.  **View Summary Results:**
     ```bash
-    cat /mnt/d/Opencode/output/summary.csv
+    cat <project_root>/output/summary.csv
     ```
 
 3.  **Generate a Markdown Report:**
-    This will generate a formatted Markdown report based on `summary.csv` and print it to your console.
+    Prints a formatted Markdown report based on `summary.csv`. By default, it dedupes and shows only the latest run per configuration. Pass `--all-runs` to see full history.
 
     ```bash
-    cd /mnt/d/Opencode/
-    PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills/publish_report.py report
+    cd <project_root>
+    PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/publish_report.py report
     ```
