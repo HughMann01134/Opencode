@@ -28,3 +28,14 @@ re:https://files\.pythonhosted\.org/packages/.*/nvidia_nccl_cu12-\*+-py3-none-ma
 re:https://files\.pythonhosted\.org/packages/.*/nvidia_nvjitlink_cu12-\*+-py3-none-manylinux2010_x86_64\.manylinux_2_12_x86_64\.whl
 re:https://files\.pythonhosted\.org/packages/.*/nvidia_nvtx_cu12-\*+-py3-none-manylinux2014_x86_64\.manylinux_2_17_x86_64\.whl
 re:^/mnt/d/Git/revamp/Opencode/
+# Session-log tracebacks/ps output; username already public via git author identity
+re:^/home/hughmann/.*
+# Literal placeholder from the SDK auth experiment (session-ses_0d1a.md)
+re:api_key='dummy'
+# Already-redacted credential text quoted from earlier scanner output in logs
+re:^[A-Za-z_][A-Za-z0-9_]*\s*=\s*"\*+"$
+# Same as above, unanchored: redacted assignments quoted mid-sentence in session logs
+re:[A-Za-z_][A-Za-z0-9_]*\s*=\s*"\*+"
+# The documented fake example key from README's pii-allow docs, quoted in session logs.
+# Exact 18-char literal; real legacy keys are 39 chars — cannot mask a genuine credential.
+AIzaSyD-abcde12345

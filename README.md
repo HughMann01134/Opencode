@@ -243,13 +243,29 @@ This project was built using an advanced agentic software engineering workflow:
 
 ## Current results
 
-This project has been verified on real WhisperX inference (CPU-only, offline assets):
-- **Verified Configuration:** `tiny` model, CPU / `int8` quantization.
-- **Reference Data:** 2 LibriSpeech utterances.
-- **Accuracy Metrics:** Word Error Rate (WER) of `0.0000` / Character Error Rate (CER) of `0.0000` (word-perfect transcriptions confirmed against reference texts).
-- **Performance Metrics:** Real-run Real-Time Factor (RTF) of `~0.61–0.87`.
+First real-inference benchmark matrix, executed 2026-07-04 on a fresh clone
+(n=10 utterances per split, seed 42, WhisperX engine):
 
-*Explicit Scope Statement:* The full 15-model, GPU-then-CPU, full-corpus sweep is fully implemented, but **not yet executed** on the target GPU hardware.
+| Model | Device/Compute | Split | RTF | WER | CER |
+|---|---|---|---|---|---|
+| tiny | cpu/int8 | test-clean | 0.27 | 0.0705 | 0.0270 |
+| tiny | cpu/int8 | test-other | 0.25 | 0.1767 | 0.0940 |
+| tiny | cuda/float16 | test-clean | 0.09 | 0.0705 | 0.0270 |
+| tiny | cuda/float16 | test-other | 0.08 | 0.1638 | 0.0882 |
+| medium.en | cuda/float16 | test-clean | 0.21 | 0.0617 | 0.0410 |
+| medium.en | cuda/float16 | test-other | 0.19 | 0.0991 | 0.0441 |
+
+Highlights: `tiny` reproduces published Whisper-tiny LibriSpeech figures
+(~7% clean / ~17% other), validating the measurement pipeline end to end;
+`medium.en` cuts word errors on noisy speech by ~40% relative; the GPU pass
+(first executed on an RTX 5060 Ti, float16) runs tiny ~3× faster than CPU;
+and int8 quantization is accuracy-free on clean speech but costs ~1.3 WER
+points on noisy speech.
+
+*Caveats:* small sample (10 utterances/split); `medium.en` clean-split WER
+sits above published figures (sample variance plus WhisperX's VAD-chunked
+pipeline vs. the standard eval protocol); the full 15-model, full-corpus
+sweep remains future work.
 
 ---
 
