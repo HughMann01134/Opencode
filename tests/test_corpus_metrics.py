@@ -137,3 +137,24 @@ def test_corpus_wer_empty_reference():
 
     assert accumulator.corpus_wer == pytest.approx(0.0)
     assert accumulator.corpus_cer == pytest.approx(0.0)
+
+def test_corpus_metrics_with_failure():
+    accumulator = CorpusMetricAccumulator()
+
+    # Successful utterance
+    ref1 = "hello world"
+    hyp1 = "hello world"
+    accumulator.add_utterance(ref1, hyp1)
+
+    # Failed utterance scored as empty hypothesis
+    ref2 = "another test"
+    hyp2 = ""
+    accumulator.add_utterance(ref2, hyp2)
+
+    # Successful: ref words = 2, char len = 11 (0 errors)
+    # Failed (empty hyp): ref words = 2, char len = 12 (all errors as deletion)
+    # Total ref words = 4, Total word errors = 2
+    # Total ref chars = 23, Total char errors = 12
+
+    assert accumulator.corpus_wer == pytest.approx(2 / 4)
+    assert accumulator.corpus_cer == pytest.approx(12 / 23)
