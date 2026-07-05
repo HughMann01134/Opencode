@@ -100,11 +100,11 @@ After assets are acquired, you can run benchmarks with the actual `whisperx` eng
         --limit 2 \
         --engine-type whisperx \
         --models-to-benchmark tiny \
-        --no-resume
+       --no-resume
     ```
 
 2.  **Run on Auto-Detected Device:**
-    *(Warning: This multi-model GPU configuration is **not yet validated on the target hardware**)*
+    *(First validated 2026-07-04 on an RTX 5060 Ti — see the results table in the README.)*
 
     ```bash
     cd <project_root>

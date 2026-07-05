@@ -35,29 +35,44 @@ Before you begin, ensure you have the following installed:
 ### Step-by-Step Installation
 
 1.  **Create and Activate a Virtual Environment:**
-    Due to specific environment permissions during development, the virtual environment was created in `/tmp/opencode/.venv`. If your environment allows, you can create it directly in your project root (`/mnt/d/Opencode/.venv`).
+    Due to specific environment permissions during development, the virtual environment was created in `<venv_path>`. If your environment allows, you can create it directly in your project root (`<project_root>/.venv`).
 
     ```bash
     # Create the virtual environment (if not already present)
-    python3 -m venv /tmp/opencode/.venv
+    python3 -m venv <venv_path>
 
     # Activate the virtual environment (or use full path as below)
-    # source /tmp/opencode/.venv/bin/activate
+    # source <venv_path>/bin/activate
     ```
 
 2.  **Install Project Dependencies:**
     Install all required Python packages into the virtual environment using `pip`.
 
     ```bash
-    /tmp/opencode/.venv/bin/pip install -r /mnt/d/Opencode/requirements.txt
+    <venv_path>/bin/pip install -r <project_root>/requirements.txt
     ```
 
 3.  **Install Project in Editable Mode:**
     This ensures that Python recognizes the `Code/` and `Skills/` directories as packages.
 
     ```bash
-    /tmp/opencode/.venv/bin/pip install -e /mnt/d/Opencode
+    <venv_path>/bin/pip install -e <project_root>
     ```
+
+4. **Remediation:** An external line-by-line review (with Claude) produced
+   [Specs/REMEDIATION_PLAN.md](Specs/REMEDIATION_PLAN.md) — 11 tasks fixing
+   metric integrity, schema, dataset handling, tests, and report hygiene —
+   executed by Gemini 3.1 Pro (planning) and Gemini 3.5 Flash (build) via
+   OpenCode, one verified commit per task.
+
+5. **Agent layer:** [Specs/AGENT_PLAN.md](Specs/AGENT_PLAN.md) added the
+   autonomous orchestrator (`Code/agent.py`) through the same
+   spec → plan-review → build → verify pipeline; bugs found in the first
+   live runs were fixed and re-verified live the same day.
+
+6. **Process evidence:** full session logs are committed in
+   [Specs/](Specs/), alongside the review documents in
+   [.opencode/](.opencode/).
 
 ## Asset Acquisition (Models & Data)
 
@@ -74,27 +89,27 @@ To download all necessary `faster-whisper` models and LibriSpeech datasets:
     This command downloads all models, LibriSpeech `test-clean` and `test-other` datasets, verifies their integrity, and runs a basic smoke test. This process can take a significant amount of time and disk space.
 
     ```bash
-    PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills/acquire_assets.py all
+    PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/acquire_assets.py all
     ```
 
     You can list available assets or preview downloads:
     ```bash
-    PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills/acquire_assets.py list
-    PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills/acquire_assets.py models --preset all --dry-run
+    PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/acquire_assets.py list
+    PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/acquire_assets.py models --preset all --dry-run
     ```
 
 ## Running the Benchmark
 
 The main entry point for the benchmark is `Code/main.py`. You can run it with various arguments.
 
-**Important:** Always run commands from the project root (`/mnt/d/Opencode`) and set `PYTHONPATH` to ensure modules are found correctly.
+**Important:** Always run commands from the project root (`<project_root>`) and set `PYTHONPATH` to ensure modules are found correctly.
 
 ### Basic Usage with Mock Engine
 
 Run a quick benchmark using the mock engine for testing the harness itself (zero-download required):
 
 ```bash
-PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python -m Code.main \
+PYTHONPATH=<project_root> <venv_path>/bin/python -m Code.main \
     --device cpu \
     --limit 5 \
     --engine-type mock \
@@ -107,7 +122,7 @@ To run with the actual `whisperx` models (after asset acquisition):
 
 ```bash
 # Run on CPU with a small limit
-PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python -m Code.main \
+PYTHONPATH=<project_root> <venv_path>/bin/python -m Code.main \
     --device cpu \
     --limit 10 \
     --engine-type whisperx \
@@ -115,7 +130,7 @@ PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python -m Code.main \
 
 # Run on GPU (if available) then CPU, with a larger dataset
 # Replace "cuda" with "auto" or "both" to enable dual-device sweep
-PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python -m Code.main \
+PYTHONPATH=<project_root> <venv_path>/bin/python -m Code.main \
     --device auto \
     --engine-type whisperx \
     --models-to-benchmark large-v3 medium.en
@@ -128,7 +143,7 @@ PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python -m Code.main \
 *   `--limit <int>`: Limit the number of utterances to process for quick runs.
 *   `--engine-type <type>`: `mock` (default) or `whisperx`.
 *   `--no-resume`: Start a fresh run, ignoring previous `details.csv` entries.
-*   `--output-dir <path>`: Directory for `details.csv` and `summary.csv` (default: `/mnt/d/Opencode/output`).
+*   `--output-dir <path>`: Directory for `details.csv` and `summary.csv` (default: `<project_root>/output`).
 
 ### Output Files
 
@@ -145,7 +160,7 @@ The `Skills/publish_report.py` script helps generate and publish Markdown report
 To generate a Markdown report from `output/summary.csv` and print it to the console (without committing):
 
 ```bash
-PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills/publish_report.py report
+PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/publish_report.py report
 ```
 
 ### Publish a Report (Commit Locally)
@@ -153,7 +168,7 @@ PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills
 To generate a report, run it through the PII scanner, and commit it to your local Git repository (without pushing to a remote):
 
 ```bash
-PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills/publish_report.py publish --no-push
+PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/publish_report.py publish --no-push
 ```
 
 This will create `reports/report_<TIMESTAMP>.md` and update `reports/INDEX.md`.
@@ -168,7 +183,7 @@ The `init` command sets up Git identity, remote, `.gitignore`, and the PII pre-c
 **Note:** You would replace `<YOUR_GITHUB_REPO_URL>`, `<YOUR_NAME>`, and `<YOUR_EMAIL>` with your actual details. For authentication, `--method ssh` assumes your SSH keys are set up.
 
 ```bash
-PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills/setup_github.py init \
+PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/setup_github.py init \
     --remote https://github.com/your-user/your-repo.git \
     --name "Your Name" \
     --email "your.email@example.com" \
@@ -180,7 +195,7 @@ PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills
 Check the current Git configuration and PII hook status:
 
 ```bash
-PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills/setup_github.py doctor
+PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/setup_github.py doctor
 ```
 
 ### PII/Secret Scanning
@@ -189,17 +204,17 @@ The `check_no_pii.py` script runs as a pre-commit hook (installed by `setup_gith
 
 ```bash
 # Scan all tracked files (e.g., before an initial commit)
-PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills/check_no_pii.py tracked
+PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/check_no_pii.py tracked
 
 # Scan specific paths
-PYTHONPATH=/mnt/d/Opencode /tmp/opencode/.venv/bin/python /mnt/d/Opencode/Skills/check_no_pii.py path /mnt/d/Opencode/some_doc.md
+PYTHONPATH=<project_root> <venv_path>/bin/python <project_root>/Skills/check_no_pii.py path <project_root>/some_doc.md
 ```
 
 ### `.pii-allow` File
 
 To handle false positives or acceptable PII, create a `.pii-allow` file in the project root. This file can contain literal strings or `re:`-prefixed regex patterns to be ignored by the scanner.
 
-Example `/mnt/d/Opencode/.pii-allow`:
+Example `<project_root>/.pii-allow`:
 ```
 # .pii-allow file for asr-benchmark-harness
 
