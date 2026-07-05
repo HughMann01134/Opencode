@@ -5,10 +5,9 @@
 The ASR Benchmark Harness is a robust Python-based tool designed to evaluate the accuracy and performance of Automatic Speech Recognition (ASR) models, specifically focusing on Systran's `faster-whisper` implementations (which leverage OpenAI Whisper checkpoints with CTranslate2 for efficient inference).
 
 This harness allows for:
-*   **Comprehensive Evaluation:** Measures Word Error Rate (WER), Character Error Rate (CER), and Real-Time Factor (RTF) against the LibriSpeech `test-clean` and `test-other` corpora.
-*   **Offline Operation:** Once assets (models and datasets) are acquired, the benchmark runs entirely offline, ensuring reproducible results.
+*   **Comprehensive Evaluation:** Measures Word Error Rate (WER), Character Error Rate (CER), and Real-Time Factor (RTF) against the LibriSpeech `test-clean` and `test-other`.
 *   **Device Management:** Automatically detects and manages GPU (CUDA) and CPU passes, allowing for a dual-device performance sweep in a single run.
-*   **Resilient Logging:** Implements transactional, line-buffered CSV logging for detailed and summarized results, protecting against data loss during unexpected interruptions.
+*   **Resilient Logging:** Implements transactional, CSV logging for detailed and summarized results, protecting against data loss during unexpected interruptions.
 *   **PII/Secret Scanning:** Integrates a pre-commit hook and report gating to prevent sensitive information from being accidentally committed or published.
 *   **Modular Design:** Composed of core Python `Code` modules and reusable `Skills` for various tasks like audio profiling, text normalization, and GitHub integration.
 
@@ -17,9 +16,7 @@ This harness allows for:
 *   **Model Compatibility:** Built for `faster-whisper` models, supporting various multilingual and English-only architectures.
 *   **Dataset Support:** Processes LibriSpeech `test-clean` and `test-other` datasets.
 *   **Performance Metrics:** Calculates WER, CER, RTF, load times, and processing times.
-*   **Crash Resiliency:** Recovers from interruptions by automatically truncating incomplete log entries and resuming from the last successfully processed utterance.
 *   **Configurable Benchmarking:** Allows selection of models, devices, batch sizes, and dataset splits via command-line arguments.
-*   **Automated Reporting:** Generates clean Markdown reports from benchmark results.
 *   **Security:** Enforces PII and secret scanning before commits and report publishing.
 
 ## Setup and Installation
